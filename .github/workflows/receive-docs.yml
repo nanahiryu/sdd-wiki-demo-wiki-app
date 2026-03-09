@@ -1,0 +1,80 @@
+# wiki-app 側の Reusable Workflow
+# ソースリポジトリから呼び出され、ドキュメントを受け取って配置する
+name: Receive Docs
+
+on:
+  workflow_call:
+    inputs:
+      source-repo:
+        description: "ソースリポジトリ名 (e.g. sdd-wiki-demo-pj-a)"
+        required: true
+        type: string
+      docs-path:
+        description: "ソースリポジトリ内のドキュメントパス (e.g. docs)"
+        required: true
+        type: string
+      dest-path:
+        description: "wiki-app 内の配置先パス (e.g. docs/pj-a)"
+        required: true
+        type: string
+    secrets:
+      APP_ID:
+        required: true
+      APP_PRIVATE_KEY:
+        required: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      # 1. GitHub App の Installation Access Token を生成
+      - name: Generate App Token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          repositories: sdd-wiki-demo-wiki-app
+
+      # 2. wiki-app リポジトリをチェックアウト
+      - name: Checkout wiki-app
+        uses: actions/checkout@v4
+        with:
+          repository: nanahiryu/sdd-wiki-demo-wiki-app
+          token: ${{ steps.app-token.outputs.token }}
+          path: wiki-app
+
+      # 3. ソースリポジトリをチェックアウト
+      - name: Checkout source repo
+        uses: actions/checkout@v4
+        with:
+          repository: nanahiryu/${{ inputs.source-repo }}
+          token: ${{ steps.app-token.outputs.token }}
+          path: source-repo
+
+      # 4. ドキュメントを同期
+      - name: Sync docs
+        run: |
+          # 配置先ディレクトリを準備
+          mkdir -p wiki-app/${{ inputs.dest-path }}
+
+          # 既存のドキュメントを削除して最新に置き換え
+          rm -rf wiki-app/${{ inputs.dest-path }}/*
+
+          # ソースからコピー
+          cp -r source-repo/${{ inputs.docs-path }}/* wiki-app/${{ inputs.dest-path }}/
+
+      # 5. 変更があればコミット & プッシュ
+      - name: Commit and push
+        working-directory: wiki-app
+        run: |
+          git config user.name "sdd-wiki-demo-bot[bot]"
+          git config user.email "sdd-wiki-demo-bot[bot]@users.noreply.github.com"
+
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "docs: sync from ${{ inputs.source-repo }}"
+            git push
+          fi
