@@ -9,12 +9,8 @@ on:
         description: "ソースリポジトリ名 (e.g. sdd-wiki-demo-pj-a)"
         required: true
         type: string
-      docs-path:
-        description: "ソースリポジトリ内のドキュメントパス (e.g. docs)"
-        required: true
-        type: string
-      dest-path:
-        description: "wiki-app 内の配置先パス (e.g. docs/pj-a)"
+      mappings:
+        description: 'JSON array of {docs-path, dest-path} (e.g. [{"docs-path":"docs","dest-path":"docs/pj-a"}])'
         required: true
         type: string
     secrets:
@@ -26,8 +22,11 @@ on:
 jobs:
   sync:
     runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 1
+      matrix:
+        mapping: ${{ fromJSON(inputs.mappings) }}
     steps:
-      # 1. GitHub App の Installation Access Token を生成
       - name: Generate App Token
         id: app-token
         uses: actions/create-github-app-token@v2
@@ -36,7 +35,6 @@ jobs:
           private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
           repositories: sdd-wiki-demo-wiki-app
 
-      # 2. wiki-app リポジトリをチェックアウト
       - name: Checkout wiki-app
         uses: actions/checkout@v4
         with:
@@ -44,7 +42,6 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
           path: wiki-app
 
-      # 3. ソースリポジトリをチェックアウト
       - name: Checkout source repo
         uses: actions/checkout@v4
         with:
@@ -52,19 +49,12 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
           path: source-repo
 
-      # 4. ドキュメントを同期
       - name: Sync docs
         run: |
-          # 配置先ディレクトリを準備
-          mkdir -p wiki-app/${{ inputs.dest-path }}
+          mkdir -p wiki-app/${{ matrix.mapping.dest-path }}
+          rm -rf wiki-app/${{ matrix.mapping.dest-path }}/*
+          cp -r source-repo/${{ matrix.mapping.docs-path }}/* wiki-app/${{ matrix.mapping.dest-path }}/
 
-          # 既存のドキュメントを削除して最新に置き換え
-          rm -rf wiki-app/${{ inputs.dest-path }}/*
-
-          # ソースからコピー
-          cp -r source-repo/${{ inputs.docs-path }}/* wiki-app/${{ inputs.dest-path }}/
-
-      # 5. 変更があればコミット & プッシュ
       - name: Commit and push
         working-directory: wiki-app
         run: |
@@ -75,6 +65,6 @@ jobs:
           if git diff --cached --quiet; then
             echo "No changes to commit"
           else
-            git commit -m "docs: sync from ${{ inputs.source-repo }}"
+            git commit -m "docs: sync ${{ matrix.mapping.docs-path }} from ${{ inputs.source-repo }}"
             git push
           fi
