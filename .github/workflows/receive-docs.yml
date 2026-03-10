@@ -18,9 +18,9 @@ on:
         required: true
         type: string
     secrets:
-      APP_ID:
+      GH_APP_ID:
         required: true
-      APP_PRIVATE_KEY:
+      GH_APP_PRIVATE_KEY:
         required: true
 
 jobs:
@@ -32,8 +32,8 @@ jobs:
         id: app-token
         uses: actions/create-github-app-token@v2
         with:
-          app-id: ${{ secrets.APP_ID }}
-          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          app-id: ${{ secrets.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
           repositories: sdd-wiki-demo-wiki-app
 
       # 2. wiki-app リポジトリをチェックアウト
