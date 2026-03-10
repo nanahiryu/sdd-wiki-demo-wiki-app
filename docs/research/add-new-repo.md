@@ -6,19 +6,18 @@
 
 ## 1. GitHub App のインストール対象に追加
 
-Organization の Settings > GitHub Apps > `<app-name>` > Configure から、新しいリポジトリをインストール対象に追加する。
+App 設定ページ > Install App > Configure から、新しいリポジトリをインストール対象に追加する。
 
-## 2. Organization Secrets のアクセス対象に追加
+## 2. Secrets の登録
 
-Organization の Settings > Secrets and variables > Actions から、`GH_APP_ID` と `GH_APP_PRIVATE_KEY` それぞれの Repository access に新しいリポジトリを追加する。
-
-CLI の場合:
+新しいリポジトリに `GH_APP_ID` と `GH_APP_PRIVATE_KEY` を登録する。値は既存リポジトリと同じ。
 
 ```bash
-gh secret set GH_APP_ID --org <org-name> --visibility selected --repos "<既存リポ>,<新規リポ>" --body "<App ID>"
+gh secret set GH_APP_ID --repo <owner>/<repo> --body "<App ID>"
+gh secret set GH_APP_PRIVATE_KEY --repo <owner>/<repo> < /path/to/private-key.pem
 ```
 
-> **注意**: `--repos` は上書きなので、既存リポジトリも含めて指定する必要がある。
+> **補足**: Organization Secrets を `visibility: all` で登録している場合、このステップは不要。
 
 ## 3. Caller Workflow の配置
 
@@ -39,7 +38,7 @@ on:
 jobs:
   sync:
     if: github.event.pull_request.merged == true
-    uses: <org>/<wiki-app-repo>/.github/workflows/receive-docs.yml@main
+    uses: <owner>/<wiki-app-repo>/.github/workflows/receive-docs.yml@main
     with:
       source-repo: <リポジトリ名>
       mappings: '[{"docs-path": "docs", "dest-path": "docs/<プロジェクト名>"}]'
@@ -66,7 +65,7 @@ on:
 jobs:
   sync:
     if: github.event.pull_request.merged == true
-    uses: <org>/<wiki-app-repo>/.github/workflows/receive-docs.yml@main
+    uses: <owner>/<wiki-app-repo>/.github/workflows/receive-docs.yml@main
     with:
       source-repo: <リポジトリ名>
       mappings: |
@@ -83,6 +82,6 @@ jobs:
 
 | 変更 | 場所 |
 |---|---|
-| App インストール対象 | Organization Settings > GitHub Apps |
-| Secrets アクセス対象 | Organization Settings > Secrets |
+| App インストール対象 | App 設定ページ > Configure |
+| Secrets 登録 | 新規リポジトリの Settings > Secrets（Org Secrets の場合は不要） |
 | Caller Workflow | 新規リポジトリの `.github/workflows/sync-docs.yml` |

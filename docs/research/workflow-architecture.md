@@ -89,6 +89,10 @@ jobs:
 
 **matrix strategy**: `mappings` の各エントリごとにジョブが生成される。`max-parallel: 1` により順番に実行され、wiki-app への同時 push による競合を防ぐ。
 
+## mappings の仕組み
+
+`mappings` は Reusable Workflow の [inputs](https://docs.github.com/en/actions/sharing-automations/reusing-workflows) として JSON 文字列で渡され、Reusable Workflow 内で [`fromJSON`](https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/evaluate-expressions#fromjson) によりオブジェクトに変換されて matrix strategy に展開される。
+
 ## mappings の設定例
 
 ### マルチレポ (単一ディレクトリ)
