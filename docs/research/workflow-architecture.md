@@ -7,7 +7,7 @@
 ## 全体構成
 
 ```
-ソースリポジトリ (pj-a, pj-b, pj-c)
+ソースリポジトリ (pj-a, pj-b, pj-c, ...)
   └── .github/workflows/sync-docs.yml     ← Caller Workflow
 
 wiki-app リポジトリ
@@ -25,7 +25,7 @@ wiki-app リポジトリ
          │
 4. GitHub App の秘密鍵から Installation Access Token を生成 (1時間で失効)
          │
-5. Token を使って wiki-app とソースリポジトリを checkout
+5. App Token で wiki-app を checkout、github.token でソースリポジトリを checkout
          │
 6. ソースの docs を wiki-app の所定パスにコピー
          │
@@ -51,7 +51,7 @@ on:
 jobs:
   sync:
     if: github.event.pull_request.merged == true
-    uses: nanahiryu/sdd-wiki-demo-wiki-app/.github/workflows/receive-docs.yml@main
+    uses: <owner>/<wiki-app-repo>/.github/workflows/receive-docs.yml@main
     with:
       source-repo: <リポジトリ名>
       mappings: '<JSON配列>'   # ← ソースパスと配置先パスのマッピング
@@ -62,9 +62,11 @@ jobs:
 
 **トリガー条件**: `pull_request: types: [closed]` + `paths` フィルタにより、ドキュメントディレクトリの変更を含む PR が main に merge されたときだけ発火する。`docs/` 以外 (src/, config/ 等) のみの変更では発火しない。
 
+**実行コンテキスト**: Reusable Workflow は wiki-app に定義されているが、実行は caller（ソースリポジトリ）のコンテキストで行われる。そのため `github.token` はソースリポジトリのトークンとなり、ソースリポジトリ自身の checkout に使用できる。
+
 ### Reusable Workflow (wiki-app)
 
-**ファイル**: `sdd-wiki-demo-wiki-app/.github/workflows/receive-docs.yml`
+**ファイル**: `<wiki-app-repo>/.github/workflows/receive-docs.yml`
 
 同期処理の本体。全ソースリポジトリから共通で呼び出される。
 
@@ -79,13 +81,13 @@ jobs:
 
 **処理ステップ**:
 
-| ステップ | 使用する Action / コマンド | 説明 |
-|---|---|---|
-| Generate App Token | `actions/create-github-app-token@v2` | 秘密鍵から JWT を生成し、Installation Access Token を取得 |
-| Checkout wiki-app | `actions/checkout@v4` | Token を使って wiki-app をクローン |
-| Checkout source repo | `actions/checkout@v4` | Token を使ってソースリポジトリをクローン |
-| Sync docs | shell | `cp -r` でドキュメントを配置先にコピー |
-| Commit and push | shell | 差分があれば `sdd-wiki-demo-bot[bot]` としてコミット & プッシュ |
+| ステップ | 使用する Action / コマンド | トークン | 説明 |
+|---|---|---|---|
+| Generate App Token | `actions/create-github-app-token@v2` | - | 秘密鍵から JWT を生成し、Installation Access Token を取得 |
+| Checkout wiki-app | `actions/checkout@v4` | App Token | 別リポジトリへの書き込みが必要なため |
+| Checkout source repo | `actions/checkout@v4` | `github.token` | caller 自身のリポジトリなので標準トークンで読める |
+| Sync docs | shell | - | `cp -r` でドキュメントを配置先にコピー |
+| Commit and push | shell | App Token | wiki-app への push に使用 |
 
 **matrix strategy**: `mappings` の各エントリごとにジョブが生成される。`max-parallel: 1` により順番に実行され、wiki-app への同時 push による競合を防ぐ。
 
@@ -116,13 +118,24 @@ jobs:
 
 GitHub App を使った短命トークンで認証する。詳細は [authentication.md](./authentication.md) を参照。
 
+## GitHub App のインストール範囲
+
+App は **wiki-app リポジトリのみ** にインストールすればよい。
+
+| リポジトリ | App インストール | 理由 |
+|---|---|---|
+| wiki-app | **必要** | App Token で checkout & push するため |
+| ソースリポジトリ | **不要** | caller 自身のリポジトリなので `github.token` で読める |
+
+ソースリポジトリに必要なのは App の認証情報（Secrets: `GH_APP_ID`, `GH_APP_PRIVATE_KEY`）のみ。これにより、新規リポジトリ追加時に App のインストール対象を変更する必要がない。
+
 ## wiki-app 上のディレクトリ構成
 
 ```
 wiki-app/docs/
-├── pj-a/                    ← sdd-wiki-demo-pj-a の docs/
-├── pj-b/                    ← sdd-wiki-demo-pj-b の docs/
+├── pj-a/                    ← pj-a の docs/
+├── pj-b/                    ← pj-b の docs/
 └── pj-c/
-    ├── plugin-alpha/        ← sdd-wiki-demo-pj-c の plugins/plugin-alpha/docs/
-    └── plugin-beta/         ← sdd-wiki-demo-pj-c の plugins/plugin-beta/spec/
+    ├── plugin-alpha/        ← pj-c の plugins/plugin-alpha/docs/
+    └── plugin-beta/         ← pj-c の plugins/plugin-beta/spec/
 ```

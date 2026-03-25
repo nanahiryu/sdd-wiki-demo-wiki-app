@@ -4,11 +4,7 @@
 
 初期セットアップがまだの場合は [initial-setup.md](./initial-setup.md) を参照。
 
-## 1. GitHub App のインストール対象に追加
-
-App 設定ページ > Install App > Configure から、新しいリポジトリをインストール対象に追加する。
-
-## 2. Secrets の登録
+## 1. Secrets の登録
 
 新しいリポジトリに `GH_APP_ID` と `GH_APP_PRIVATE_KEY` を登録する。値は既存リポジトリと同じ。
 
@@ -19,7 +15,7 @@ gh secret set GH_APP_PRIVATE_KEY --repo <owner>/<repo> < /path/to/private-key.pe
 
 > **補足**: Organization Secrets を `visibility: all` で登録している場合、このステップは不要。
 
-## 3. Caller Workflow の配置
+## 2. Caller Workflow の配置
 
 新しいリポジトリに `.github/workflows/sync-docs.yml` を作成する。
 
@@ -78,10 +74,11 @@ jobs:
       GH_APP_PRIVATE_KEY: ${{ secrets.GH_APP_PRIVATE_KEY }}
 ```
 
+> **注意**: App のインストール対象の追加は不要。App は wiki-app にのみインストールされており、ソースリポジトリの追加時に変更する必要はない。
+
 ## 変更内容の確認
 
 | 変更 | 場所 |
 |---|---|
-| App インストール対象 | App 設定ページ > Configure |
 | Secrets 登録 | 新規リポジトリの Settings > Secrets（Org Secrets の場合は不要） |
 | Caller Workflow | 新規リポジトリの `.github/workflows/sync-docs.yml` |
