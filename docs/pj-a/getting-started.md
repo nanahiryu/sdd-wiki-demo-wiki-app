@@ -1,6 +1,6 @@
 # pj-a: Getting Started
 
-> リファクタリング後の動作確認
+> private リポ + github.token での動作確認
 
 pj-a のセットアップ手順です。
 
