@@ -46,7 +46,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: nanahiryu/${{ inputs.source-repo }}
-          token: ${{ steps.app-token.outputs.token }}
+          token: ${{ github.token }}
           path: source-repo
 
       - name: Sync docs

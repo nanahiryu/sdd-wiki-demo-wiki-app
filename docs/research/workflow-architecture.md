@@ -25,7 +25,8 @@ wiki-app リポジトリ
          │
 4. GitHub App の秘密鍵から Installation Access Token を生成 (1時間で失効)
          │
-5. Token を使って wiki-app とソースリポジトリを checkout
+5. App Token で wiki-app を checkout、github.token でソースリポジトリを checkout
+   (checkout = リポジトリのファイルを GitHub Actions ランナーにダウンロードする)
          │
 6. ソースの docs を wiki-app の所定パスにコピー
          │
