@@ -29,7 +29,9 @@ App 設定ページ下部「Private keys」→「Generate a private key」で `.
 App 設定ページ左サイドバー「Install App」から、自分のアカウントにインストールする。
 
 - Repository access: **Only select repositories**
-- 対象: wiki-app リポジトリ + 全ソースリポジトリ
+- 対象: **wiki-app リポジトリのみ**
+
+> **補足**: App のインストールは「App がどのリポジトリにアクセスできるか」を決めるもの。wiki-app への push に App Token を使うため、wiki-app にインストールが必要。ソースリポジトリ（pj-a 等）は caller 自身のリポジトリなので `github.token` で読めるため、App のインストールは不要。
 
 ## 4. Secrets の登録
 
@@ -64,7 +66,7 @@ wiki-app リポジトリに `.github/workflows/receive-docs.yml` を配置する
 | 項目 | 個人アカウント | Organization |
 |---|---|---|
 | App 作成場所 | https://github.com/settings/apps/new | Organization の Settings > Developer settings > GitHub Apps |
-| App インストール先 | Only on this account | Any account → 対象 Org にインストール |
+| App インストール先 | Only on this account → wiki-app のみ | Any account → 対象 Org にインストール → wiki-app のみ |
 | Secrets 登録 | 各リポジトリに個別登録 | Organization Secrets に1回登録（`--visibility selected`） |
 | 新規リポ追加時 | Secret を個別登録 | 設定変更不要（`visibility: all` の場合） |
 | 鍵ローテーション | 全リポジトリで更新 | 1箇所で更新 |
