@@ -1,6 +1,6 @@
 # pj-a: Getting Started
 
-> wiki sync のテスト用に更新しました。
+> リファクタリング後の動作確認
 
 pj-a のセットアップ手順です。
 
