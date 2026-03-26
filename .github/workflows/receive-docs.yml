@@ -10,7 +10,7 @@ on:
         required: true
         type: string
       mappings:
-        description: 'JSON array of {docs-path, dest-path} (e.g. [{"docs-path":"docs","dest-path":"docs/pj-a"}])'
+        description: 'JSON array of {docs-path, dest-path}. dest-path は docs/{source-repo}/ 配下のサブパス (e.g. [{"docs-path":"docs","dest-path":""}])'
         required: true
         type: string
     secrets:
@@ -49,14 +49,31 @@ jobs:
           token: ${{ github.token }}
           path: source-repo
 
-      - name: Sync docs
+      - name: Validate paths
+        env:
+          SOURCE_REPO: ${{ inputs.source-repo }}
+          DOCS_PATH: ${{ matrix.mapping.docs-path }}
+          DEST_PATH: ${{ matrix.mapping.dest-path }}
         run: |
-          mkdir -p wiki-app/${{ matrix.mapping.dest-path }}
-          rm -rf wiki-app/${{ matrix.mapping.dest-path }}/*
-          cp -r source-repo/${{ matrix.mapping.docs-path }}/* wiki-app/${{ matrix.mapping.dest-path }}/
+          wiki-app/scripts/ci/validate-path.sh "source-repo" "$SOURCE_REPO"
+          wiki-app/scripts/ci/validate-path.sh "docs-path" "$DOCS_PATH"
+          wiki-app/scripts/ci/validate-path.sh "dest-path" "$DEST_PATH" --allow-empty
+
+      - name: Sync docs
+        env:
+          DEST_DIR: docs/${{ inputs.source-repo }}/${{ matrix.mapping.dest-path }}
+          DOCS_PATH: ${{ matrix.mapping.docs-path }}
+        run: |
+          DEST_DIR="${DEST_DIR%/}"
+          mkdir -p "wiki-app/${DEST_DIR}"
+          rm -rf "wiki-app/${DEST_DIR}/"*
+          cp -r "source-repo/${DOCS_PATH}/"* "wiki-app/${DEST_DIR}/"
 
       - name: Commit and push
         working-directory: wiki-app
+        env:
+          DOCS_PATH: ${{ matrix.mapping.docs-path }}
+          SOURCE_REPO: ${{ inputs.source-repo }}
         run: |
           git config user.name "sdd-wiki-demo-bot[bot]"
           git config user.email "sdd-wiki-demo-bot[bot]@users.noreply.github.com"
@@ -65,6 +82,6 @@ jobs:
           if git diff --cached --quiet; then
             echo "No changes to commit"
           else
-            git commit -m "docs: sync ${{ matrix.mapping.docs-path }} from ${{ inputs.source-repo }}"
+            git commit -m "docs: sync ${DOCS_PATH} from ${SOURCE_REPO}"
             git push
           fi

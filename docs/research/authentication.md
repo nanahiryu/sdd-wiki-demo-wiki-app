@@ -1,15 +1,55 @@
 # 認証の仕組み
 
-## GitHub App とは
+## 概要
+
+ドキュメント同期ワークフローでは2種類のトークンを使い分けている。
+
+| トークン | 用途 | 発行元 |
+|---|---|---|
+| `github.token` | ソースリポジトリの checkout（読み取り） | GitHub Actions が自動発行 |
+| App Token | wiki-app の checkout & push（書き込み） | GitHub App の秘密鍵から生成 |
+
+## github.token
+
+> 参考: [Automatic token authentication - GitHub Docs](https://docs.github.com/en/actions/security-for-github-actions/security-guides/automatic-token-authentication)
+
+GitHub Actions がワークフロー実行時に自動発行するトークン。caller（ソースリポジトリ）のコンテキストで発行されるため、ソースリポジトリへの読み取りアクセスを持つ。
+
+> **補足**: `GITHUB_TOKEN` は `${{ secrets.GITHUB_TOKEN }}` と `${{ github.token }}` の2通りで参照できる（[公式ドキュメント](https://docs.github.com/en/actions/security-for-github-actions/security-guides/automatic-token-authentication)）。
+> - *"You can use the GITHUB_TOKEN by using the standard syntax for referencing secrets: `${{ secrets.GITHUB_TOKEN }}`"*
+> - *"An action can access the GITHUB_TOKEN through the `github.token` context"*
+
+- 追加設定不要（デフォルトで `contents: read` が付与されている）
+- ワークフロー実行が終わると自動失効
+- リポジトリの Settings > Actions > General > 「Workflow permissions」で権限レベルを確認・変更可能
+
+> **補足**: Reusable Workflow は wiki-app に定義されているが、実行コンテキストは caller（ソースリポジトリ）のもの。そのため `github.token` はソースリポジトリのトークンとなり、private リポでも自身の checkout に使用できる。
+
+## GitHub App Token
+
+GitHub App の秘密鍵から動的に生成する短命トークン。wiki-app への書き込みに使用する。
+
+### GitHub App とは
 
 GitHub App は GitHub 上で動作する「アプリケーション」としてのアイデンティティ。人間のユーザーアカウントとは別の、独立した行為者として振る舞う。
 
-権限は細かく設定可能で、今回は Repository permissions > Contents: Read and write のみを付与している。さらにインストール時にアクセス可能なリポジトリを限定できるため、最小権限の原則を守りやすい。
+権限は細かく設定可能で、今回は Repository permissions > Contents: Read and write のみを付与している。
 
-## 認証フロー
+### App のインストール
+
+App のインストールは「App がどのリポジトリにアクセスできるか」を決めるもの。
+
+| リポジトリ | App インストール | 理由 |
+|---|---|---|
+| wiki-app | **必要** | App Token で checkout & push するため |
+| ソースリポジトリ | **不要** | `github.token` で読めるため |
+
+ソースリポジトリに必要なのは App の認証情報（Secrets: `GH_APP_ID`, `GH_APP_PRIVATE_KEY`）のみ。App のインストールとは独立した概念。
+
+### 認証フロー
 
 ```
-GH_APP_ID + GH_APP_PRIVATE_KEY (Organization Secrets に1回登録)
+GH_APP_ID + GH_APP_PRIVATE_KEY (Secrets に保存)
         │
         ▼
 JWT を生成 (秘密鍵で署名、有効期限10分)
@@ -21,7 +61,7 @@ GitHub API に JWT を送信
 Installation Access Token を取得 (有効期限1時間)
         │
         ▼
-Token で git clone / git push を実行
+Token で wiki-app への git clone / git push を実行
         │
         ▼
 1時間後に Token は自動失効
@@ -30,8 +70,6 @@ Token で git clone / git push を実行
 秘密鍵を直接 git 操作に使うのではなく、短命トークンの生成にのみ使用する。これにより万が一トークンが漏洩しても1時間で無効化される。
 
 ## 他の認証方式との比較
-
-Org Secrets を使う前提で比較する（Secrets 登録回数はいずれも1回で済む）。
 
 | 観点 | Personal Access Token | Deploy Key | GitHub App |
 |---|---|---|---|
